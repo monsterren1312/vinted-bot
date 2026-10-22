@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+data/
+.env
+*.bak
+data/state.pickle
+bin/
