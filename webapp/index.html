@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Vinted Monitor</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --bg2: var(--tg-theme-secondary-bg-color, #f1f1f4);
+  --section: var(--tg-theme-section-bg-color, var(--bg));
+  --text: var(--tg-theme-text-color, #111111);
+  --hint: var(--tg-theme-hint-color, #8a8a8e);
+  --link: var(--tg-theme-link-color, #2481cc);
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --danger: var(--tg-theme-destructive-text-color, #e53935);
+  --sep: color-mix(in srgb, var(--hint) 22%, transparent);
+  --radius: 14px;
+  --nav-h: 62px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg2); color: var(--text);
+  font: 15px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, "Segoe UI", sans-serif; }
+body { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); overscroll-behavior-y: none; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
+input { font: inherit; color: var(--text); }
+.hidden { display: none !important; }
+
+/* header */
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg2); padding: 12px 16px 8px;
+  display: flex; align-items: center; gap: 10px; }
+.top h1 { font-size: 22px; margin: 0; flex: 1; letter-spacing: -0.3px; }
+.status { font-size: 12px; color: var(--hint); }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--section); display: grid;
+  place-items: center; font-size: 17px; }
+.icon-btn.spin span { display: inline-block; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* layout */
+.view { padding: 0 12px 16px; }
+.section { background: var(--section); border-radius: var(--radius); margin: 8px 0 14px; overflow: hidden; }
+.section-title { font-size: 13px; text-transform: uppercase; color: var(--hint); margin: 16px 6px 6px;
+  letter-spacing: 0.3px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 48px; }
+.row + .row { border-top: 1px solid var(--sep); }
+.row .grow { flex: 1; min-width: 0; }
+.row .sub { color: var(--hint); font-size: 13px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+.row.tap:active { background: var(--bg2); }
+.muted { color: var(--hint); }
+.empty { text-align: center; color: var(--hint); padding: 48px 24px; }
+.empty .big { font-size: 42px; margin-bottom: 8px; }
+
+/* chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { flex: none; padding: 7px 13px; border-radius: 18px; background: var(--section); font-size: 14px;
+  white-space: nowrap; border: 1.5px solid transparent; }
+.chip.on { background: color-mix(in srgb, var(--accent) 14%, var(--section)); border-color: var(--accent);
+  color: var(--accent); font-weight: 600; }
+
+/* buttons */
+.btn { display: block; width: 100%; padding: 13px; border-radius: 12px; background: var(--accent);
+  color: var(--accent-text); font-weight: 600; text-align: center; }
+.btn.secondary { background: var(--section); color: var(--accent); }
+.btn.danger { background: var(--section); color: var(--danger); }
+.btn:disabled { opacity: 0.5; }
+.btn-row { display: flex; gap: 8px; margin: 10px 0; }
+.btn-row .btn { flex: 1; }
+
+/* switch */
+.switch { position: relative; width: 50px; height: 30px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch i { position: absolute; inset: 0; border-radius: 15px; background: var(--sep); transition: 0.2s; }
+.switch i::after { content: ""; position: absolute; width: 26px; height: 26px; left: 2px; top: 2px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: 0.2s; }
+.switch input:checked + i { background: #34c759; }
+.switch input:checked + i::after { transform: translateX(20px); }
+
+/* listing grid */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 560px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.card { background: var(--section); border-radius: var(--radius); overflow: hidden; position: relative; }
+.card .ph { aspect-ratio: 3 / 4; background: var(--bg2) center / cover no-repeat; }
+.card .info { padding: 8px 10px 10px; }
+.card .price { font-weight: 700; font-size: 16px; }
+.card .meta { color: var(--hint); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .heart { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(0,0,0,.38); color: #fff; display: grid; place-items: center; font-size: 16px; }
+.card .flag { position: absolute; top: 8px; left: 8px; font-size: 18px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.progress { font-size: 13px; color: var(--hint); margin: 4px 4px 10px; }
+
+/* filters */
+.filter-flag { font-size: 24px; }
+.badge { font-size: 12px; color: var(--hint); background: var(--bg2); padding: 2px 8px; border-radius: 10px; }
+
+/* bottom nav */
+nav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom); background: var(--bg); border-top: 1px solid var(--sep);
+  display: flex; z-index: 10; }
+nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; font-size: 11px; color: var(--hint); }
+nav button .ic { font-size: 21px; filter: grayscale(1); opacity: 0.7; }
+nav button.on { color: var(--accent); font-weight: 600; }
+nav button.on .ic { filter: none; opacity: 1; }
+
+/* sheet */
+.sheet-back { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; opacity: 0; transition: .2s; }
+.sheet-back.show { opacity: 1; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow-y: auto; z-index: 21;
+  background: var(--bg2); border-radius: 18px 18px 0 0; transform: translateY(100%); transition: .25s ease;
+  padding: 8px 14px calc(18px + env(safe-area-inset-bottom)); }
+.sheet.show { transform: none; }
+.sheet .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--sep); margin: 2px auto 10px; }
+.sheet h2 { font-size: 20px; margin: 4px 2px 10px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 13px; color: var(--hint); margin: 0 4px 6px; text-transform: uppercase; letter-spacing: .3px; }
+.input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 0; background: var(--section);
+  outline: none; }
+.price-inputs { display: flex; gap: 8px; align-items: center; }
+.price-inputs .input { text-align: center; }
+.suggest { margin-top: 6px; }
+.detail-photo { width: 100%; aspect-ratio: 3 / 4; max-height: 56vh; object-fit: cover; border-radius: var(--radius);
+  background: var(--section); display: block; }
+.detail-price { font-size: 26px; font-weight: 800; margin: 12px 2px 2px; }
+.detail-title { font-size: 17px; margin: 0 2px 8px; }
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(20px); background: rgba(30,30,30,.92); color: #fff; padding: 10px 16px;
+  border-radius: 12px; font-size: 14px; z-index: 40; opacity: 0; transition: .25s; pointer-events: none;
+  max-width: 88vw; text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--sep); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+.stat { flex: 1; text-align: center; padding: 12px 6px; }
+.stat b { display: block; font-size: 22px; }
+.stat span { font-size: 12px; color: var(--hint); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 id="title">Новые</h1>
+  <div class="status" id="status"></div>
+  <button class="icon-btn" id="checkBtn" title="Проверить сейчас"><span>🔄</span></button>
+</div>
+
+<main>
+  <section class="view" id="v-feed"></section>
+  <section class="view hidden" id="v-filters"></section>
+  <section class="view hidden" id="v-period"></section>
+  <section class="view hidden" id="v-fav"></section>
+  <section class="view hidden" id="v-more"></section>
+</main>
+
+<nav id="nav">
+  <button data-tab="feed" class="on"><span class="ic">🔥</span>Новые</button>
+  <button data-tab="filters"><span class="ic">📋</span>Фильтры</button>
+  <button data-tab="period"><span class="ic">🕐</span>Период</button>
+  <button data-tab="fav"><span class="ic">❤️</span>Избранное</button>
+  <button data-tab="more"><span class="ic">⚙️</span>Ещё</button>
+</nav>
+
+<div class="sheet-back hidden" id="sheetBack"></div>
+<div class="sheet hidden" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// Report page errors to the bot's log (sent before anything else can fail).
+function reportError(msg) {
+  try { navigator.sendBeacon ? navigator.sendBeacon("/log", String(msg).slice(0, 500))
+    : fetch("/log", { method: "POST", body: String(msg).slice(0, 500) }); } catch (e) {}
+}
+window.addEventListener("error", (e) => reportError(`error: ${e.message} @${e.lineno}:${e.colno}`));
+window.addEventListener("unhandledrejection", (e) => reportError(`promise: ${e.reason && (e.reason.stack || e.reason.message || e.reason)}`));
+</script>
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+try { tg?.setHeaderColor?.("secondary_bg_color"); tg?.setBackgroundColor?.("secondary_bg_color"); } catch (e) {}
+
+const S = { state: null, tab: "feed", feedFilter: "all", period: { scope: "all", hours: 1, items: null, gen: 0 } };
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const haptic = (t = "light") => { try { tg?.HapticFeedback?.impactOccurred(t); } catch (e) {} };
+const notifyHaptic = (t = "success") => { try { tg?.HapticFeedback?.notificationOccurred(t); } catch (e) {} };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    method: opts.method || "GET",
+    headers: { "X-Init-Data": tg?.initData || "", "Content-Type": "application/json" },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!res.ok) {
+    const msg = res.status === 401 ? "Открой приложение из Telegram" : res.status === 403 ? "Нет доступа" : "Ошибка " + res.status;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+function toast(text) {
+  const t = $("#toast"); t.textContent = text; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+function confirmBox(text) {
+  return new Promise((ok) => (tg?.showConfirm ? tg.showConfirm(text, ok) : ok(window.confirm(text))));
+}
+function openLink(url) { tg?.openLink ? tg.openLink(url) : window.open(url, "_blank"); }
+
+function ago(ts) {
+  if (!ts) return "";
+  const m = Math.floor((Date.now() / 1000 - ts) / 60);
+  if (m < 1) return "только что";
+  if (m < 60) return `${m} мин назад`;
+  if (m < 1440) return `${Math.floor(m / 60)} ч назад`;
+  return `${Math.floor(m / 1440)} д назад`;
+}
+const money = (v, cur) => `${Number(v).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ${cur === "GBP" ? "£" : cur === "EUR" ? "€" : cur}`;
+function priceLabel(f) {
+  const c = f.currency;
+  if (f.price_from != null && f.price_to != null) return `${f.price_from}–${f.price_to} ${c}`;
+  if (f.price_to != null) return `до ${f.price_to} ${c}`;
+  if (f.price_from != null) return `от ${f.price_from} ${c}`;
+  return "любая цена";
+}
+function filterSummary(f) {
+  const o = S.state.options, parts = [priceLabel(f)];
+  if (f.keyword) parts.push(`«${f.keyword}»`);
+  if (f.category) parts.push(o.categories.find((c) => c.id === f.category)?.label || "");
+  if (f.sizes.length) parts.push("📏 " + f.sizes_label);
+  if (f.conditions.length) parts.push(f.conditions.map((id) => o.conditions.find((c) => c.id === id)?.label).join(", "));
+  return parts.join(" · ");
+}
+
+// ---------- state / header ----------
+async function loadState() {
+  S.state = await api("/api/state");
+  const st = S.state.settings, stats = S.state.stats;
+  $("#status").textContent = st.paused ? "⏸ пауза" : `каждые ${stats.interval_min} мин${stats.last_check ? " · " + stats.last_check : ""}`;
+}
+
+// ---------- tabs ----------
+const TITLES = { feed: "Новые", filters: "Фильтры", period: "За период", fav: "Избранное", more: "Ещё" };
+function setTab(tab) {
+  S.tab = tab;
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-" + tab));
+  $("#title").textContent = TITLES[tab];
+  window.scrollTo(0, 0);
+  render();
+}
+$("#nav").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { haptic("soft"); setTab(b.dataset.tab); } });
+
+function render() {
+  ({ feed: renderFeed, filters: renderFilters, period: renderPeriod, fav: renderFav, more: renderMore })[S.tab]();
+}
+
+// ---------- listing cards ----------
+function cardHtml(it, idx) {
+  const meta = [it.brand, it.details].filter(Boolean).join(" · ");
+  return `<div class="card" data-idx="${idx}">
+    <div class="ph" style="background-image:url('${esc(it.photo || "")}')"></div>
+    <span class="flag">${it.flag || ""}</span>
+    <button class="heart" data-heart="${idx}">${it.fav ? "❤️" : "🤍"}</button>
+    <div class="info"><div class="price">${money(it.price, it.currency)}</div>
+      <div class="meta">${esc(meta)}</div>
+      <div class="meta">${it.approx ? "≈ " : ""}${ago(it.ts)}</div></div></div>`;
+}
+function bindGrid(el, items, onChange) {
+  el.onclick = async (e) => {
+    const h = e.target.closest("[data-heart]");
+    if (h) { e.stopPropagation(); await toggleFav(items[+h.dataset.heart]); h.textContent = items[+h.dataset.heart].fav ? "❤️" : "🤍"; onChange?.(); return; }
+    const c = e.target.closest(".card");
+    if (c) openItem(items[+c.dataset.idx], onChange);
+  };
+}
+async function toggleFav(it) {
+  haptic();
+  const r = await api("/api/favorite", { method: "POST", body: { item_id: it.item_id, item: it } });
+  it.fav = r.fav;
+  toast(r.fav ? "❤️ Сохранено в избранное" : "Убрано из избранного");
+}
+
+function openItem(it, onChange) {
+  const sellerLine = it.seller
+    ? `👤 ${esc(it.seller)} · ⭐ ${it.feedback ? it.rating : "—"} (${it.feedback ?? 0} отзывов)` : "";
+  openSheet(`
+    ${it.photo ? `<img class="detail-photo" src="${esc(it.photo)}" alt="">` : ""}
+    <div class="detail-price">${money(it.price, it.currency)}</div>
+    <div class="detail-title">${esc(it.title)}</div>
+    <div class="section">
+      <div class="row"><div class="grow">${it.flag || ""} ${esc(it.brand || "")}<div class="sub">${esc(it.details || "")}</div></div></div>
+      ${sellerLine ? `<div class="row"><div class="grow">${sellerLine}</div></div>` : ""}
+      <div class="row"><div class="grow muted">🕒 ${it.approx ? "≈ " : ""}${ago(it.ts)}</div></div>
+    </div>
+    <button class="btn" id="dOpen">🛒 Открыть на Vinted</button>
+    <div class="btn-row">
+      <button class="btn secondary" id="dFav">${it.fav ? "💔 Убрать" : "🤍 В избранное"}</button>
+      ${it.seller_id || it.user_id ? `<button class="btn danger" id="dBlock">🚫 Скрыть продавца</button>` : ""}
+    </div>`);
+  $("#dOpen").onclick = () => openLink(it.url);
+  $("#dFav").onclick = async () => { await toggleFav(it); $("#dFav").textContent = it.fav ? "💔 Убрать" : "🤍 В избранное"; onChange?.(); };
+  const b = $("#dBlock");
+  if (b) b.onclick = async () => {
+    if (!(await confirmBox(`Больше не показывать объявления продавца ${it.seller || ""}?`))) return;
+    await api("/api/block", { method: "POST", body: { item_id: it.item_id, seller_id: it.seller_id || it.user_id, seller: it.seller } });
+    notifyHaptic(); toast("🚫 Продавец скрыт"); closeSheet(); render();
+  };
+}
+
+// ---------- feed ----------
+async function renderFeed() {
+  const v = $("#v-feed");
+  if (!S.state) return;
+  const fl = S.state.filters;
+  const chips = [`<button class="chip ${S.feedFilter === "all" ? "on" : ""}" data-f="all">Все</button>`]
+    .concat(fl.map((f) => `<button class="chip ${S.feedFilter == f.id ? "on" : ""}" data-f="${f.id}">${f.flag} ${esc(f.brand)} <span class="muted">${f.found}</span></button>`));
+  v.innerHTML = `<div class="chips">${chips.join("")}</div><div id="feedBody"><div class="spinner"></div></div>`;
+  v.querySelector(".chips").onclick = (e) => { const c = e.target.closest("[data-f]"); if (c) { haptic("soft"); S.feedFilter = c.dataset.f; renderFeed(); } };
+  const kind = S.feedFilter === "all" ? "feed" : "flt:" + S.feedFilter;
+  const { items } = await api("/api/items?kind=" + encodeURIComponent(kind));
+  const body = $("#feedBody");
+  if (!items.length) {
+    body.innerHTML = fl.length
+      ? `<div class="empty"><div class="big">🔎</div>Пока ничего нового.<br>Новые объявления появятся здесь — и придут сообщением в чат.</div>`
+      : `<div class="empty"><div class="big">👋</div>Добавь первый бренд, и я начну искать новые объявления.<br><br><button class="btn" id="goAdd">➕ Добавить бренд</button></div>`;
+    $("#goAdd")?.addEventListener("click", () => openFilterEditor(null));
+    return;
+  }
+  body.innerHTML = `<div class="grid">${items.map(cardHtml).join("")}</div>`;
+  bindGrid(body.firstChild, items);
+}
+
+// ---------- favorites ----------
+async function renderFav() {
+  const v = $("#v-fav");
+  v.innerHTML = `<div class="spinner"></div>`;
+  const { items } = await api("/api/items?kind=fav");
+  if (!items.length) { v.innerHTML = `<div class="empty"><div class="big">🤍</div>В избранном пусто.<br>Нажимай 🤍 на объявлениях, чтобы сохранить их.</div>`; return; }
+  v.innerHTML = `<div class="grid">${items.map(cardHtml).join("")}</div>`;
+  bindGrid(v.firstChild, items, () => { if (S.tab === "fav") setTimeout(renderFav, 300); });
+}
+
+// ---------- filters ----------
+function renderFilters() {
+  const v = $("#v-filters");
+  const fl = S.state.filters;
+  const rows = fl.map((f) => `
+    <div class="row tap" data-id="${f.id}">
+      <span class="filter-flag">${f.flag}</span>
+      <div class="grow"><b>${esc(f.brand)}</b> <span class="badge">🔥 ${f.found}</span><div class="sub">${esc(filterSummary(f))}</div></div>
+      <label class="switch" data-sw="${f.id}"><input type="checkbox" ${f.enabled ? "checked" : ""}><i></i></label>
+    </div>`).join("");
+  v.innerHTML = `
+    <button class="btn" id="addFilter" style="margin-top:8px">➕ Добавить бренд</button>
+    ${fl.length ? `<div class="section">${rows}</div>
+      <div class="btn-row">
+        <button class="btn secondary" id="allToggle">${fl.some((f) => f.enabled) ? "Выключить все" : "Включить все"}</button>
+        <button class="btn danger" id="allDelete">Удалить все</button>
+      </div>` : `<div class="empty"><div class="big">📋</div>Фильтров пока нет</div>`}`;
+  $("#addFilter").onclick = () => openFilterEditor(null);
+  v.querySelectorAll("[data-sw]").forEach((sw) => {
+    sw.onclick = (e) => e.stopPropagation();
+    sw.querySelector("input").onchange = async (e) => {
+      haptic();
+      const f = await api(`/api/filters/${sw.dataset.sw}`, { method: "PATCH", body: { enabled: e.target.checked } });
+      Object.assign(fl.find((x) => x.id === f.id), f);
+      toast(f.enabled ? "🟢 Фильтр включён" : "⚪️ Фильтр выключен");
+    };
+  });
+  v.querySelectorAll(".row[data-id]").forEach((r) => (r.onclick = () => openFilterEditor(fl.find((f) => f.id == r.dataset.id))));
+  $("#allToggle")?.addEventListener("click", async () => {
+    const enable = !fl.some((f) => f.enabled);
+    await api("/api/filters/all", { method: "POST", body: { action: enable ? "enable" : "disable" } });
+    await loadState(); renderFilters();
+  });
+  $("#allDelete")?.addEventListener("click", async () => {
+    if (!(await confirmBox("Удалить все фильтры? Это нельзя отменить."))) return;
+    await api("/api/filters/all", { method: "POST", body: { action: "delete" } });
+    notifyHaptic("warning"); await loadState(); renderFilters();
+  });
+}
+
+function openFilterEditor(f) {
+  const o = S.state.options;
+  const isNew = !f;
+  const d = f ? { ...f, conditions: [...f.conditions], sizes: [...f.sizes] }
+    : { brand: "", brand_id: null, region: "eu", price_from: null, price_to: null, keyword: "", category: 0,
+        conditions: [], sizes: [] };
+  const sizeGroups = o.size_groups;
+  let sizeTab = (sizeGroups.find((g) => g.sizes.some((z) => d.sizes.includes(z.id))) || sizeGroups[0]).key;
+  const regions = isNew ? o.regions : o.regions.filter((r) => r.code !== "both");
+  const presets = [[null, null, "Любая"], [null, 20, "до 20"], [null, 50, "до 50"], [null, 100, "до 100"], [null, 200, "до 200"], [50, null, "от 50"]];
+  openSheet(`
+    <h2>${isNew ? "Новый фильтр" : `${d.flag} ${esc(d.brand)}`}</h2>
+    ${isNew ? `<div class="field"><label>Бренд</label>
+      <input class="input" id="eBrand" placeholder="Например, Nike" autocomplete="off">
+      <div class="chips wrap suggest" id="eSuggest"></div></div>` : ""}
+    <div class="field"><label>Где искать</label><div class="chips wrap" id="eRegion">
+      ${regions.map((r) => `<button class="chip ${d.region === r.code ? "on" : ""}" data-v="${r.code}">${esc(r.label)}</button>`).join("")}</div></div>
+    <div class="field"><label>Цена</label>
+      <div class="price-inputs"><input class="input" id="eFrom" type="number" inputmode="decimal" placeholder="от" value="${d.price_from ?? ""}">
+      <span class="muted">—</span><input class="input" id="eTo" type="number" inputmode="decimal" placeholder="до" value="${d.price_to ?? ""}"></div>
+      <div class="chips" id="ePresets" style="margin-top:8px">${presets.map((p, i) => `<button class="chip" data-p="${i}">${p[2]}</button>`).join("")}</div></div>
+    <div class="field"><label>Слова в названии</label>
+      <input class="input" id="eKw" placeholder="например: dunk, air max 90" value="${esc(d.keyword)}"></div>
+    <div class="field"><label>Категория</label><div class="chips wrap" id="eCat">
+      ${o.categories.map((c) => `<button class="chip ${d.category === c.id ? "on" : ""}" data-v="${c.id}">${esc(c.label)}</button>`).join("")}</div></div>
+    <div class="field"><label>Размер <span style="text-transform:none" id="eSizeSel"></span></label>
+      <div class="chips" id="eSizeTabs">${sizeGroups.map((g) => `<button class="chip" data-g="${g.key}">${esc(g.label)}</button>`).join("")}</div>
+      <div class="chips wrap" id="eSizes"></div></div>
+    <div class="field"><label>Состояние <span style="text-transform:none">(можно несколько)</span></label><div class="chips wrap" id="eCond">
+      ${o.conditions.map((c) => `<button class="chip ${d.conditions.includes(c.id) ? "on" : ""}" data-v="${c.id}">${esc(c.label)}</button>`).join("")}</div></div>
+    <button class="btn" id="eSave" ${isNew ? "disabled" : ""}>${isNew ? "Добавить фильтр" : "Сохранить"}</button>
+    ${isNew ? "" : `<div class="btn-row">
+      <button class="btn secondary" id="eFound">🔥 Найденное (${d.found})</button>
+      <button class="btn secondary" id="ePeriod">🕐 За 24 часа</button></div>
+      <button class="btn danger" id="eDel">🗑 Удалить фильтр</button>`}`);
+
+  const single = (id, key, cast = (x) => x) => {
+    $(id).onclick = (e) => {
+      const c = e.target.closest("[data-v]"); if (!c) return;
+      haptic("soft"); d[key] = cast(c.dataset.v);
+      $(id).querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === c));
+    };
+  };
+  single("#eRegion", "region");
+  single("#eCat", "category", Number);
+  const sizeName = (z) => d.region === "uk" ? z.uk : d.region === "both" && z.uk !== z.eu ? `${z.eu} · ${z.uk}` : z.eu;
+  const drawSizes = () => {
+    const g = sizeGroups.find((x) => x.key === sizeTab);
+    $("#eSizeTabs").querySelectorAll(".chip").forEach((c) => {
+      const n = sizeGroups.find((x) => x.key === c.dataset.g).sizes.filter((z) => d.sizes.includes(z.id)).length;
+      c.classList.toggle("on", c.dataset.g === sizeTab);
+      c.textContent = sizeGroups.find((x) => x.key === c.dataset.g).label + (n ? ` · ${n}` : "");
+    });
+    $("#eSizes").innerHTML = g.sizes.map((z) => `<button class="chip ${d.sizes.includes(z.id) ? "on" : ""}" data-v="${z.id}">${esc(sizeName(z))}</button>`).join("")
+      + (d.sizes.length ? `<button class="chip" data-clear="1">✖ Любой размер</button>` : "");
+    const all = sizeGroups.flatMap((x) => x.sizes).filter((z) => d.sizes.includes(z.id)).map(sizeName);
+    $("#eSizeSel").textContent = all.length ? `— ${all.join(", ")}` : "— любой";
+  };
+  $("#eSizeTabs").onclick = (e) => { const c = e.target.closest("[data-g]"); if (c) { haptic("soft"); sizeTab = c.dataset.g; drawSizes(); } };
+  $("#eSizes").onclick = (e) => {
+    if (e.target.closest("[data-clear]")) { d.sizes = []; haptic("soft"); return drawSizes(); }
+    const c = e.target.closest("[data-v]"); if (!c) return;
+    haptic("soft"); const id = +c.dataset.v;
+    d.sizes = d.sizes.includes(id) ? d.sizes.filter((x) => x !== id) : d.sizes.concat(id);
+    drawSizes();
+  };
+  drawSizes();
+  $("#eRegion").addEventListener("click", () => setTimeout(drawSizes));  // shoe labels follow the region (EU/UK)
+  $("#eCond").onclick = (e) => {
+    const c = e.target.closest("[data-v]"); if (!c) return;
+    haptic("soft"); const id = +c.dataset.v;
+    d.conditions = d.conditions.includes(id) ? d.conditions.filter((x) => x !== id) : d.conditions.concat(id);
+    c.classList.toggle("on");
+  };
+  $("#ePresets").onclick = (e) => {
+    const c = e.target.closest("[data-p]"); if (!c) return;
+    haptic("soft"); const p = presets[+c.dataset.p];
+    $("#eFrom").value = p[0] ?? ""; $("#eTo").value = p[1] ?? "";
+  };
+
+  if (isNew) {
+    const input = $("#eBrand"), sug = $("#eSuggest");
+    const showBrands = (list) => {
+      sug.innerHTML = list.map((b, i) => `<button class="chip ${d.brand_id === b.id ? "on" : ""}" data-i="${i}">${esc(b.title)}</button>`).join("");
+      sug.onclick = async (e) => {
+        const c = e.target.closest("[data-i]"); if (!c) return;
+        let b = list[+c.dataset.i];
+        if (b.id == null) { // popular brand: resolve its id
+          const r = await api("/api/brands?q=" + encodeURIComponent(b.title));
+          b = r.brands.find((x) => x.title.toLowerCase() === b.title.toLowerCase()) || r.brands[0];
+          if (!b) return toast("Бренд не найден");
+        }
+        haptic(); d.brand_id = b.id; d.brand = b.title; input.value = b.title;
+        $("#eSave").disabled = false; showBrands([b]);
+      };
+    };
+    showBrands(o.popular.map((t) => ({ id: null, title: t })));
+    let timer;
+    input.oninput = () => {
+      d.brand_id = null; $("#eSave").disabled = true;
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) return showBrands(o.popular.map((t) => ({ id: null, title: t })));
+      timer = setTimeout(async () => {
+        try { const r = await api("/api/brands?q=" + encodeURIComponent(q)); if (input.value.trim() === q) showBrands(r.brands); }
+        catch (e) { toast(e.message); }
+      }, 350);
+    };
+  }
+
+  $("#eSave").onclick = async () => {
+    const pf = $("#eFrom").value, pt = $("#eTo").value;
+    if (pf && pt && +pf > +pt) return toast("Минимальная цена больше максимальной");
+    const body = { region: d.region, price_from: pf === "" ? null : +pf, price_to: pt === "" ? null : +pt,
+      keyword: $("#eKw").value.trim(), category: d.category, conditions: d.conditions, sizes: d.sizes };
+    $("#eSave").disabled = true;
+    try {
+      if (isNew) {
+        await api("/api/filters", { method: "POST", body: { ...body, brand_id: d.brand_id, brand: d.brand } });
+        toast(d.region === "both" ? "✅ Добавлено на обоих сайтах" : "✅ Фильтр добавлен");
+      } else {
+        await api(`/api/filters/${d.id}`, { method: "PATCH", body });
+        toast("✅ Сохранено");
+      }
+      notifyHaptic(); closeSheet(); await loadState(); render();
+    } catch (e) { toast(e.message); $("#eSave").disabled = false; }
+  };
+  if (!isNew) {
+    $("#eDel").onclick = async () => {
+      if (!(await confirmBox(`Удалить фильтр ${d.brand}?`))) return;
+      await api(`/api/filters/${d.id}`, { method: "DELETE" });
+      notifyHaptic("warning"); toast("🗑 Фильтр удалён"); closeSheet(); await loadState(); render();
+    };
+    $("#eFound").onclick = () => { closeSheet(); S.feedFilter = String(d.id); setTab("feed"); };
+    $("#ePeriod").onclick = () => { closeSheet(); S.period = { scope: String(d.id), hours: 24, items: null, gen: S.period.gen + 1 }; setTab("period"); runPeriod(); };
+  }
+}
+
+// ---------- period ----------
+function renderPeriod() {
+  const v = $("#v-period"), o = S.state.options, P = S.period;
+  const scopes = [{ id: "all", label: "Все фильтры" }].concat(S.state.filters.filter((f) => f.enabled).map((f) => ({ id: String(f.id), label: `${f.flag} ${f.brand}` })));
+  v.innerHTML = `
+    <div class="section-title">Фильтр</div>
+    <div class="chips" id="pScope">${scopes.map((s) => `<button class="chip ${P.scope === s.id ? "on" : ""}" data-v="${s.id}">${esc(s.label)}</button>`).join("")}</div>
+    <div class="section-title">Период</div>
+    <div class="chips" id="pHours">${o.periods.map((p) => `<button class="chip ${P.hours === p.hours ? "on" : ""}" data-v="${p.hours}">${p.label}</button>`).join("")}</div>
+    <button class="btn" id="pRun" style="margin:8px 0 6px">Показать объявления</button>
+    <div class="muted" style="font-size:12.5px;margin:0 4px 10px">Ищу на Vinted всё, что выставили за это время — даже до добавления фильтра. Время примерное (≈), продавцов без отзывов пропускаю.</div>
+    <div id="pBody"></div>`;
+  v.querySelector("#pScope").onclick = (e) => { const c = e.target.closest("[data-v]"); if (c) { haptic("soft"); P.scope = c.dataset.v; P.items = null; renderPeriod(); } };
+  v.querySelector("#pHours").onclick = (e) => { const c = e.target.closest("[data-v]"); if (c) { haptic("soft"); P.hours = +c.dataset.v; P.items = null; renderPeriod(); } };
+  $("#pRun").onclick = runPeriod;
+  if (P.items) drawPeriod();
+}
+
+async function runPeriod() {
+  const P = S.period, gen = ++P.gen;
+  if (S.tab !== "period") return;
+  $("#pBody").innerHTML = `<div class="spinner"></div><div class="empty" style="padding-top:0">Ищу объявления…<br>Это может занять до минуты.</div>`;
+  try {
+    const { items } = await api(`/api/period?scope=${P.scope}&hours=${P.hours}`);
+    if (gen !== P.gen) return;
+    P.raw = items; P.items = items.slice(); P.checked = 0;
+    drawPeriod();
+    // Everything shows right away; sellers are checked one by one in the background (the profile
+    // API rate-limits bursts) and listings from sellers without enough reviews drop out.
+    for (const it of items) {
+      if (gen !== P.gen) return;
+      try {
+        const s = await api(`/api/seller?user_id=${it.user_id}&domain=${encodeURIComponent(it.domain)}`);
+        if (s.ok) Object.assign(it, { seller: s.seller, feedback: s.feedback, rating: s.rating });
+        else P.items = P.items.filter((x) => x !== it);
+      } catch (e) { /* keep the listing; its seller just stays unchecked */ }
+      P.checked++;
+      if (gen === P.gen && S.tab === "period") drawPeriod();
+    }
+  } catch (e) { if (gen === P.gen) $("#pBody").innerHTML = `<div class="empty">😕 ${esc(e.message)}</div>`; }
+}
+
+function drawPeriod() {
+  const P = S.period, body = $("#pBody");
+  if (!body || !P.raw) return;
+  const done = P.checked >= P.raw.length;
+  const progress = P.raw.length ? (done ? `Найдено: ${P.items.length}` : `Найдено: ${P.items.length} · проверяю продавцов ${P.checked}/${P.raw.length}…`) : "";
+  if (!P.raw.length || (done && !P.items.length)) { body.innerHTML = `<div class="empty"><div class="big">🕐</div>За этот период подходящих объявлений нет</div>`; return; }
+  const grid = body.querySelector(".grid");
+  const prog = body.querySelector(".progress");
+  // Re-render the grid only when its contents changed, so scrolling isn't disturbed by progress updates.
+  const key = P.items.map((x) => x.item_id).join(",");
+  if (grid && prog && body.dataset.key === key) { prog.textContent = progress; return; }
+  body.dataset.key = key;
+  body.innerHTML = `<div class="progress">${progress}</div><div class="grid">${P.items.map(cardHtml).join("")}</div>`;
+  bindGrid(body.querySelector(".grid"), P.items);
+}
+
+// ---------- more / settings ----------
+async function renderMore() {
+  const v = $("#v-more"), st = S.state.settings, stats = S.state.stats, o = S.state.options;
+  v.innerHTML = `
+    <div class="section" style="display:flex">
+      <div class="stat"><b>${stats.today}</b><span>найдено сегодня</span></div>
+      <div class="stat"><b>${S.state.filters.filter((f) => f.enabled).length}</b><span>активных фильтров</span></div>
+      <div class="stat"><b>${stats.favorites}</b><span>в избранном</span></div>
+    </div>
+    <div class="section-title">Уведомления</div>
+    <div class="section">
+      <div class="row"><div class="grow">Присылать новые объявления<div class="sub">Проверка каждые ${stats.interval_min} мин</div></div>
+        <label class="switch"><input type="checkbox" id="sPaused" ${st.paused ? "" : "checked"}><i></i></label></div>
+      <div class="row"><div class="grow">🌙 Тихие часы<div class="sub">${o.quiet_hours} без уведомлений, всё сохраняется в «Новые»</div></div>
+        <label class="switch"><input type="checkbox" id="sQuiet" ${st.quiet ? "checked" : ""}><i></i></label></div>
+    </div>
+    <div class="section-title">Минимум отзывов у продавца</div>
+    <div class="chips" id="sFb">${o.min_feedback.map((n) => `<button class="chip ${st.min_feedback === n ? "on" : ""}" data-v="${n}">${n}</button>`).join("")}</div>
+    <div class="muted" style="font-size:12.5px;margin:0 4px">Новые аккаунты без отзывов пропускаю.</div>
+    <div class="section-title">Скрытые продавцы</div>
+    <div class="section" id="sBlocked"><div class="row muted">Загрузка…</div></div>
+    <div class="section-title">Данные</div>
+    <button class="btn danger" id="sClear">🧹 Очистить ленту «Новые»</button>
+    <div class="muted" style="font-size:12px;text-align:center;margin:18px 0 4px">Vinted Monitor · 🇪🇺 vinted.de · 🇬🇧 vinted.co.uk</div>`;
+  const save = async (body, msg) => { haptic(); await api("/api/settings", { method: "POST", body }); toast(msg); await loadState(); };
+  $("#sPaused").onchange = (e) => save({ paused: !e.target.checked }, e.target.checked ? "▶️ Уведомления включены" : "⏸ Уведомления на паузе");
+  $("#sQuiet").onchange = (e) => save({ quiet: e.target.checked }, e.target.checked ? "🌙 Тихие часы включены" : "Тихие часы выключены");
+  $("#sFb").onclick = async (e) => {
+    const c = e.target.closest("[data-v]"); if (!c) return;
+    v.querySelectorAll("#sFb .chip").forEach((x) => x.classList.toggle("on", x === c));
+    await save({ min_feedback: +c.dataset.v }, `Продавцы от ${c.dataset.v} отзывов`);
+  };
+  $("#sClear").onclick = async () => {
+    if (!(await confirmBox("Очистить ленту найденных объявлений? Избранное останется."))) return;
+    await api("/api/clear_feed", { method: "POST" }); toast("🧹 Лента очищена"); await loadState();
+  };
+  const { blocked } = await api("/api/blocked");
+  const box = $("#sBlocked");
+  if (!box) return;
+  box.innerHTML = blocked.length
+    ? blocked.map((b) => `<div class="row"><div class="grow">🚫 ${esc(b.seller)}</div><button class="chip" data-unblock="${b.seller_id}">Вернуть</button></div>`).join("")
+    : `<div class="row muted">Нет скрытых продавцов</div>`;
+  box.onclick = async (e) => {
+    const b = e.target.closest("[data-unblock]"); if (!b) return;
+    await api(`/api/blocked/${b.dataset.unblock}`, { method: "DELETE" }); toast("Продавец возвращён"); renderMore();
+  };
+}
+
+// ---------- sheet ----------
+function openSheet(html) {
+  const sh = $("#sheet"), bk = $("#sheetBack");
+  sh.innerHTML = `<div class="grab"></div>` + html;
+  sh.classList.remove("hidden"); bk.classList.remove("hidden");
+  requestAnimationFrame(() => { sh.classList.add("show"); bk.classList.add("show"); });
+  sh.scrollTop = 0;
+  tg?.BackButton?.show();
+}
+function closeSheet() {
+  const sh = $("#sheet"), bk = $("#sheetBack");
+  sh.classList.remove("show"); bk.classList.remove("show");
+  setTimeout(() => { sh.classList.add("hidden"); bk.classList.add("hidden"); sh.innerHTML = ""; }, 250);
+  tg?.BackButton?.hide();
+}
+$("#sheetBack").onclick = closeSheet;
+tg?.BackButton?.onClick(closeSheet);
+
+// ---------- check now ----------
+$("#checkBtn").onclick = async () => {
+  const b = $("#checkBtn"); if (b.classList.contains("spin")) return;
+  haptic(); b.classList.add("spin");
+  try {
+    const r = await api("/api/check", { method: "POST" });
+    toast(r.found ? `🔥 Найдено новых: ${r.found}` : "Новых объявлений пока нет");
+    await loadState(); if (S.tab === "feed" || S.tab === "filters") render();
+  } catch (e) { toast(e.message); }
+  b.classList.remove("spin");
+};
+
+// ---------- boot ----------
+(async () => {
+  try {
+    await loadState();
+    const start = tg?.initDataUnsafe?.start_param;
+    setTab(["feed", "filters", "period", "fav", "more"].includes(start) ? start : "feed");
+  } catch (e) {
+    reportError("boot: " + e.message);
+    $("#v-feed").innerHTML = `<div class="empty"><div class="big">😕</div>${esc(e.message)}</div>`;
+  }
+  reportError(`ok: rendered tab=${S.tab}, tg=${tg ? tg.platform + " v" + tg.version : "none"}, w=${innerWidth}x${innerHeight}`);
+})();
+// Refresh the feed when the app comes back into view.
+document.addEventListener("visibilitychange", async () => {
+  if (!document.hidden && S.state) { await loadState(); if (S.tab === "feed") renderFeed(); }
+});
+</script>
+</body>
+</html>
